@@ -8,120 +8,16 @@ Original file is located at
 """
 
 import streamlit as st
-from openai import OpenAI
-import tempfile
+import openai
+from gradio_client import Client
 
-# Initialize OpenAI client
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-
-st.title("Your Emotion-Aware ChatBot 🎤🤖")
-
-# Initialize session state
-if "messages" not in st.session_state:
-    st.session_state["messages"] = []
-
-# Emotion → Voice mapping
-EMOTION_VOICE_MAP = {
-    "neutral": "alloy",
-    "happy": "verse",
-    "sad": "aria",
-    "angry": "sage"
-}
-
-# Display chat history
-for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]):
-        st.markdown(f"**Emotion:** {msg['emotion']}")
-        st.markdown(msg["content"])
-        if msg.get("audio"):
-            st.audio(msg["audio"])
-
-# Function to get assistant response
-def get_response():
-    response = client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
-    )
-    return response.choices[0].message.content
-
-# Function to generate assistant audio
-def generate_audio(text, emotion="neutral", filename="assistant_reply.mp3"):
-    voice = EMOTION_VOICE_MAP.get(emotion, "alloy")
-    with client.audio.speech.with_streaming_response.create(
-        model="gpt-4o-mini-tts",
-        voice=voice,
-        input=text
-    ) as response:
-        response.stream_to_file(filename)
-    return filename
-
-# Function to transcribe user audio
-def transcribe_audio(uploaded_file):
-    if uploaded_file is not None:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
-            tmp.write(uploaded_file.read())
-            tmp_path = tmp.name
-        with open(tmp_path, "rb") as f:
-            transcription = client.audio.transcriptions.create(
-                model="gpt-4o-mini-transcribe",
-                file=f
-            )
-        return transcription.text
-    return None
-
-# Function to detect emotion from text
-def detect_emotion(text: str) -> str:
-    response = client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[
-            {"role": "system", "content": "You are an emotion detection assistant. Classify the user's emotion as one of: neutral, happy, sad, angry."},
-            {"role": "user", "content": text}
-        ]
-    )
-    emotion = response.choices[0].message.content.lower()
-    if emotion not in ["neutral", "happy", "sad", "angry"]:
-        emotion = "neutral"
-    return emotion
-
-# User inputs
-user_text = st.chat_input("💬 Type your message...")
-audio_file = st.file_uploader("🎤 Upload a voice message", type=["wav", "mp3", "m4a"])
-
-# Transcribe if voice input
-transcribed_text = transcribe_audio(audio_file)
-user_input = user_text or transcribed_text
-
-if user_input:
-    # Detect emotion automatically
-    user_emotion = detect_emotion(user_input)
-
-    # Append user message
-    st.session_state.messages.append({
-        "role": "user",
-        "content": user_input,
-        "emotion": user_emotion,
-        "audio": audio_file if audio_file else None
-    })
-
-    with st.chat_message("user"):
-        st.markdown(f"**Emotion:** {user_emotion}")
-        st.markdown(user_input)
-        if audio_file:
-            st.audio(audio_file)
-
-    # Assistant response (mirrors detected emotion)
-    assistant_reply = get_response()
-    assistant_emotion = user_emotion
-    audio_file_reply = generate_audio(assistant_reply, emotion=assistant_emotion)
-
-    st.session_state.messages.append({
-        "role": "assistant",
-        "content": assistant_reply,
-        "emotion": assistant_emotion,
-        "audio": audio_file_reply
-    })
-
-    with st.chat_message("assistant"):
-        st.markdown(f"**Emotion:** {assistant_emotion}")
-        st.markdown(assistant_reply)
-        st.audio(audio_file_reply)
+client = Client("NihalGazi/Text-To-Speech-Unlimited")
+result = client.predict(
+		prompt="Hello! What a splendid outing today!",
+		voice="alloy",
+		emotion="happy",
+		use_random_seed=True,
+		specific_seed=12345,
+		api_name="/text_to_speech_app"
+)
+print(result)
