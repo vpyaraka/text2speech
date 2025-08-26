@@ -9,15 +9,55 @@ Original file is located at
 
 import streamlit as st
 import openai
-from gradio_client import Client
+from gtts import gTTS
+import os
 
-client = Client("NihalGazi/Text-To-Speech-Unlimited")
-result = client.predict(
-		prompt="Hello! What a splendid outing today!",
-		voice="alloy",
-		emotion="happy",
-		use_random_seed=True,
-		specific_seed=12345,
-		api_name="/text_to_speech_app"
-)
-print(result)
+# ✅ Initialize OpenAI client with Streamlit secret
+openai.api_key = st.secrets["OPENAI_API_KEY"]
+
+# ✅ Streamlit App Title
+st.title("Your ChatBot Name 🤖 with Text-to-Speech")
+
+# ✅ Maintain chat history in session state
+if "messages" not in st.session_state:
+    st.session_state["messages"] = []
+
+# Function to get response from OpenAI
+def get_response(user_input):
+    messages = [{"role": "system", "content": "You are a helpful assistant."}]
+    messages += st.session_state["messages"]
+    messages.append({"role": "user", "content": user_input})
+
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=messages
+    )
+    reply = response.choices[0].message["content"]
+    return reply
+
+# Display existing chat history
+for msg in st.session_state["messages"]:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
+
+# User input
+if user_input := st.chat_input("Type your message..."):
+    # Append user message
+    st.session_state["messages"].append({"role": "user", "content": user_input})
+    with st.chat_message("user"):
+        st.markdown(user_input)
+
+    # Get AI response
+    reply = get_response(user_input)
+    st.session_state["messages"].append({"role": "assistant", "content": reply})
+
+    with st.chat_message("assistant"):
+        st.markdown(reply)
+
+        # ✅ Generate speech from reply using gTTS
+        tts = gTTS(reply, lang="en")
+        audio_path = "reply.mp3"
+        tts.save(audio_path)
+
+        # ✅ Play audio in Streamlit
+        st.audio(audio_path, format="audio/mp3")
