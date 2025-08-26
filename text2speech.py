@@ -8,56 +8,24 @@ Original file is located at
 """
 
 import streamlit as st
-import openai
 from gtts import gTTS
 import os
 
-# ✅ Initialize OpenAI client with Streamlit secret
-openai.api_key = st.secrets["OPENAI_API_KEY"]
-
-# ✅ Streamlit App Title
-st.title("Your ChatBot Name 🤖 with Text-to-Speech")
-
-# ✅ Maintain chat history in session state
-if "messages" not in st.session_state:
-    st.session_state["messages"] = []
-
-# Function to get response from OpenAI
-def get_response(user_input):
-    messages = [{"role": "system", "content": "You are a helpful assistant."}]
-    messages += st.session_state["messages"]
-    messages.append({"role": "user", "content": user_input})
-
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=messages
-    )
-    reply = response.choices[0].message["content"]
-    return reply
-
-# Display existing chat history
-for msg in st.session_state["messages"]:
-    with st.chat_message(msg["role"]):
-        st.markdown(msg["content"])
+# Streamlit App Title
+st.title("Text to Speech Converter 🔊")
 
 # User input
-if user_input := st.chat_input("Type your message..."):
-    # Append user message
-    st.session_state["messages"].append({"role": "user", "content": user_input})
-    with st.chat_message("user"):
-        st.markdown(user_input)
+user_text = st.text_area("Enter text to convert into speech:")
 
-    # Get AI response
-    reply = get_response(user_input)
-    st.session_state["messages"].append({"role": "assistant", "content": reply})
-
-    with st.chat_message("assistant"):
-        st.markdown(reply)
-
-        # ✅ Generate speech from reply using gTTS
-        tts = gTTS(reply, lang="en")
-        audio_path = "reply.mp3"
+if st.button("Convert to Speech"):
+    if user_text.strip():
+        # Convert text to speech
+        tts = gTTS(user_text, lang="en")
+        audio_path = "speech.mp3"
         tts.save(audio_path)
 
-        # ✅ Play audio in Streamlit
+        # Play audio
+        st.success("✅ Audio generated successfully!")
         st.audio(audio_path, format="audio/mp3")
+    else:
+        st.warning("⚠️ Please enter some text before converting.")
